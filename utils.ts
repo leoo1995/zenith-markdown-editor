@@ -1,4 +1,8 @@
+
 import { EMOJI_MAP } from './constants';
+import saveAs from 'file-saver';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import html2pdf from 'html2pdf.js';
 
 export const insertTextAtCursor = (original: string, start: number, end: number, prefix: string, suffix: string = '') => {
   const before = original.substring(0, start);
@@ -42,45 +46,42 @@ export const generateFilename = (content: string) => {
 
 export const downloadFile = (content: string, filename: string, type: string) => {
   const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  saveAs(blob, filename);
 };
 
 export const exportToPdf = async (elementId: string, filename: string) => {
   const element = document.getElementById(elementId);
   if (!element) return;
-  // Dynamic import for pdf library
-  const html2pdf = (await import('https://esm.sh/html2pdf.js@0.10.1')).default;
-  const opt = { margin: 10, filename: `${filename}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
+  
+  // Added 'as const' to orientation to satisfy TypeScript union type requirement
+  const opt = { 
+    margin: 10, 
+    filename: `${filename}.pdf`, 
+    image: { type: 'jpeg' as const, quality: 0.98 },
+    html2canvas: { scale: 2 }, 
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const } 
+  };
+  
   html2pdf().set(opt).from(element).save();
 };
 
 export const exportToHtml = (content: string, title: string) => {
-    const html = `<html><body style="font-family:sans-serif;max-width:800px;margin:auto;padding:2rem">${content}</body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>body{font-family:system-ui,sans-serif;max-width:800px;margin:2rem auto;padding:0 1rem;line-height:1.6;color:#1a1a1a}pre{background:#f4f4f4;padding:1rem;border-radius:4px;overflow-x:auto}code{font-family:monospace;background:#f4f4f4;padding:0.2rem 0.4rem;border-radius:3px}blockquote{border-left:4px solid #ddd;padding-left:1rem;margin:1rem 0;color:#666}</style></head><body>${content}</body></html>`;
     downloadFile(html, `${title}.html`, 'text/html');
 };
 
 /**
  * NATIVE DOCX EXPORT
- * This function parses the Markdown string and maps it to native Office Open XML objects.
+ * Professional mapping of Markdown elements to native docx objects.
  */
 export const exportToDocx = async (markdown: string, title: string) => {
     try {
-        const { Document, Packer, Paragraph, TextRun, HeadingLevel } = await import('https://esm.sh/docx@9.0.0');
-
         const children: any[] = [];
         const lines = markdown.split('\n');
 
         const parseInlineStyles = (text: string) => {
             const runs: any[] = [];
             let lastIdx = 0;
-            // Basic regex for Bold and Italic
             const regex = /(\*\*|__|\*|_)(.*?)\1/g;
             let match;
 
@@ -93,7 +94,7 @@ export const exportToDocx = async (markdown: string, title: string) => {
                 runs.push(new TextRun({
                     text: content,
                     bold: marker.length === 2,
-                    italic: marker.length === 1
+                    italics: marker.length === 1
                 }));
                 lastIdx = regex.lastIndex;
             }
@@ -126,18 +127,19 @@ export const exportToDocx = async (markdown: string, title: string) => {
             }
         });
 
-        const doc = new Document({ sections: [{ children }] });
+        const doc = new Document({ 
+            title: title,
+            sections: [{ 
+                properties: {},
+                children 
+            }] 
+        });
+        
         const blob = await Packer.toBlob(doc);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title}.docx`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        saveAs(blob, `${title}.docx`);
     } catch (e) {
         console.error("DOCX Export Error", e);
+        alert("Error exporting DOCX. Please check the console.");
     }
 };
 
