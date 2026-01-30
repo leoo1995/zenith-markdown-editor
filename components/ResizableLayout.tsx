@@ -32,7 +32,7 @@ export const ResizableLayout: React.FC<ResizableLayoutProps> = ({
       const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
       
       // Boundaries
-      if (newWidth > 15 && newWidth < 85) {
+      if (newWidth > 20 && newWidth < 80) {
         setLeftWidth(newWidth);
       }
     }
@@ -42,6 +42,9 @@ export const ResizableLayout: React.FC<ResizableLayoutProps> = ({
     if (isResizing) {
       window.addEventListener('mousemove', resize);
       window.addEventListener('mouseup', stopResizing);
+      document.body.style.cursor = 'col-resize';
+    } else {
+      document.body.style.cursor = 'default';
     }
     return () => {
       window.removeEventListener('mousemove', resize);
@@ -51,37 +54,34 @@ export const ResizableLayout: React.FC<ResizableLayoutProps> = ({
 
   if (isZenMode) {
     return (
-      <div className="flex-1 flex justify-center bg-white dark:bg-black transition-all duration-500 overflow-y-auto">
-        <div className="w-full max-w-4xl h-full shadow-2xl dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {left}
-        </div>
+      <div className="flex-1 w-full bg-white dark:bg-black flex justify-center overflow-y-auto">
+        {left}
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
-      {/* Resizing Overlay to prevent interaction during drag */}
+    <div ref={containerRef} className="flex-1 flex overflow-hidden relative w-full h-full">
+      {/* Resizing Overlay */}
       {isResizing && <div className="fixed inset-0 z-50 cursor-col-resize" />}
 
-      {/* Left Pane (Editor) */}
+      {/* Editor Pane */}
       <div 
-        className={`h-full border-r border-slate-200 dark:border-slate-800 transition-[width] duration-75 ${activeTab === 'editor' ? 'flex' : 'hidden md:flex'}`}
-        style={{ width: `${leftWidth}%` }}
+        className={`h-full flex-col shrink-0 overflow-hidden ${activeTab === 'editor' ? 'flex' : 'hidden md:flex'}`}
+        style={{ width: window.innerWidth < 768 ? '100%' : `${leftWidth}%` }}
       >
         {left}
       </div>
 
-      {/* Resizer Handle */}
+      {/* Handle */}
       <div 
         onMouseDown={startResizing}
-        className={`resizer-handle hidden md:block border-x border-slate-200/50 dark:border-slate-800/50 transition-colors ${isResizing ? 'active' : ''}`}
+        className={`resizer-handle hidden md:block border-x border-slate-200/50 dark:border-slate-800/50 transition-colors ${isResizing ? 'active bg-blue-500' : 'hover:bg-blue-400/20'}`}
       />
 
-      {/* Right Pane (Preview) */}
+      {/* Preview Pane */}
       <div 
-        className={`h-full bg-white dark:bg-black transition-[width] duration-75 ${activeTab === 'preview' ? 'flex' : 'hidden md:block'}`}
-        style={{ width: `${100 - leftWidth}%` }}
+        className={`h-full flex-col flex-1 overflow-hidden bg-white dark:bg-black ${activeTab === 'preview' ? 'flex' : 'hidden md:flex'}`}
       >
         {right}
       </div>
